@@ -33,6 +33,7 @@ class QSettings;
 class QNetworkReply;
 class QUrl;
 class QNetworkAccessManager;
+class QHttpMultiPart;
 
 namespace OCC {
 
@@ -66,8 +67,19 @@ public:
      * @returns the (themeable) dav path for the account.
      */
     QString davPath() const;
+
+    /**
+     * @brief The possibly themed files dav path for the account. It has
+     *        a trailing slash.
+     * @returns the (themeable) files dav path for the account.
+     */
+    QString davFilesPath() const;
     void setDavPath(const QString&s) { _davPath = s; }
     void setNonShib(bool nonShib);
+
+    /// Functions for bundle support
+    void setBundleRequestsIfCapable(bool bundleRequests);
+    bool bundledRequestsEnabled();
 
     static AccountPtr create();
     ~Account();
@@ -114,6 +126,8 @@ public:
     QNetworkReply* deleteRequest( const QUrl &url);
     QNetworkReply* davRequest(const QByteArray &verb, const QString &relPath, QNetworkRequest req, QIODevice *data = 0);
     QNetworkReply* davRequest(const QByteArray &verb, const QUrl &url, QNetworkRequest req, QIODevice *data = 0);
+    QNetworkReply* multipartRequest(const QString &relPath, QNetworkRequest req, QHttpMultiPart *multiPart);
+    QNetworkReply* multipartRequest(const QUrl &url, QNetworkRequest req, QHttpMultiPart *multiPart);
 
     /** The ssl configuration during the first connection */
     QSslConfiguration getOrCreateSslConfig();
@@ -225,6 +239,7 @@ private:
     QString _pemPrivateKey;  
     QString _davPath; // defaults to value from theme, might be overwritten in brandings
     bool _wasMigrated;
+    bool _bundleRequests;
     friend class AccountManager;
 };
 
