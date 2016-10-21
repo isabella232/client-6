@@ -589,11 +589,12 @@ int SyncEngine::treewalkFile( TREE_WALK_FILE *file, bool remote )
             // This counts as a NONE for detecting if all the files on the server were changed
             _hasNoneFiles = true;
         } else if (!isDirectory) {
-            if (std::difftime(file->modtime, file->other.modtime) < 0) {
-                // We are going back on time
+            auto difftime = std::difftime(file->modtime, file->other.modtime);
+            if (difftime < -3600) {
+                // We are going back on time (more than two hours to avoid clock skew issues or DST)
                 _backInTimeFiles++;
                 qDebug() << file->path << "has a timestamp earlier than the local file";
-            } else {
+            } else if (difftime > 0) {
                 _hasForwardInTimeFiles = true;
             }
         }
@@ -928,7 +929,10 @@ void SyncEngine::slotDiscoveryJobFinished(int discoveryResult)
             && _discoveryMainThread->_dataFingerprint != databaseFingerprint) {
         qDebug() << "data fingerprint changed, assume restore from backup" << databaseFingerprint << _discoveryMainThread->_dataFingerprint;
         restoreOldFiles();
-    } else if (!_hasForwardInTimeFiles && _backInTimeFiles >= 2) {
+    } else if (!_hasForwardInTimeFiles && _backInTimeFiles >= 2 && _account->serverVersionInt() < 0x090100) {
+        // The server before ownCloud 9.1 did not have the data-fingerprint property. So in that
+        // case we use heuristics to detect restored backup.  This is disabled with newer version
+        // because this causes troubles to the user and is not as reliable as the data-fingerprint.
         qDebug() << "All the changes are bringing files in the past, asking the user";
         // this typically happen when a backup is restored on the server
         bool restore = false;
